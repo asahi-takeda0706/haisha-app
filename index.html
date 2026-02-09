@@ -26,7 +26,7 @@ h2,h3{margin:6px 0}
 <div id="listScreen">
 <h2>配車一覧</h2>
 <div id="eventList"></div>
-<button class="big-btn" onclick="createEvent()">＋ 新しい配車を作成</button>
+<button class="big-btn" onclick="createNewEvent()">＋ 新しい配車を作成</button>
 </div>
 
 <!-- 編集画面 -->
@@ -123,8 +123,8 @@ function renderList(){
   });
 }
 
-// 新規作成
-function createEvent(){
+// 新規作成（← 名前を変更）
+function createNewEvent(){
   events.push({
     name:"新しい配車",
     date:"",
