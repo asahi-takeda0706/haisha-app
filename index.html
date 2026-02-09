@@ -13,23 +13,13 @@ h2,h3{margin:6px 0}
 .big-btn{padding:10px;font-size:16px;border-radius:8px;border:none;background:#4da3ff;color:#fff;width:100%}
 .flex{display:flex;gap:10px}
 .card{flex:1;background:#fff;border-radius:12px;padding:10px}
-
 .absent-row{background:#ffe5e5}
-
-.status-btn{padding:6px 10px;border-radius:8px;border:none}
-.st-none{background:#ddd}
-.st-ok{background:#bde0ff}
-.st-ng{background:#ffbdbd}
-
-.use-btn{padding:6px 10px;border-radius:8px;border:none}
-.use-off{background:#ddd}
-.use-on{background:#b6f2c2}
-
 .hidden{display:none}
 .status-ok{color:green;font-weight:bold}
 .status-ng{color:red;font-weight:bold}
 </style>
 </head>
+
 <body>
 
 <!-- 一覧画面 -->
@@ -74,20 +64,7 @@ h2,h3{margin:6px 0}
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-
-  const listScreen = document.getElementById("listScreen");
-  const editScreen = document.getElementById("editScreen");
-  const eventList = document.getElementById("eventList");
-  const eventTitle = document.getElementById("eventTitle");
-  const eventDate = document.getElementById("eventDate");
-  const eventName = document.getElementById("eventName");
-  const players = document.getElementById("players");
-  const cars = document.getElementById("cars");
-  const attendCount = document.getElementById("attendCount");
-  const capacityStatus = document.getElementById("capacityStatus");
-  
-// ===== マスター（実名） =====
+// ===== マスター（変更なし） =====
 const playersMaster = [
 {name:"小路口 悠太郎",grade:5},
 {name:"杉山 朔弥",grade:5},
@@ -131,19 +108,18 @@ const carMaster = [
 {name:"飛田",cap:4}
 ];
 
-// ===== イベントデータ =====
+// ===== データ =====
 let events = JSON.parse(localStorage.getItem("events")) || [];
 let currentEventIndex = null;
 
-// 一覧表示
+// 一覧
 function renderList(){
   eventList.innerHTML="";
   events.forEach((e,i)=>{
-    const d = e.date ? new Date(e.date).toLocaleDateString() : "日付未設定";
     eventList.innerHTML+=`
-    <div class="section" onclick="openEvent(${i})">
-      <strong>${e.name}</strong><br>${d}
-    </div>`;
+      <div class="section" onclick="openEvent(${i})">
+        <strong>${e.name}</strong>
+      </div>`;
   });
 }
 
@@ -153,11 +129,11 @@ function createEvent(){
     name:"新しい配車",
     date:"",
     players: playersMaster.map(p=>({...p,attend:true})),
-    cars: carMaster.map(c=>({...c,status:"未回答",use:false}))
+    cars: carMaster.map(c=>({...c,use:false}))
   });
+  currentEventIndex = events.length-1;
   saveEvents();
-  renderList();
-  openEvent(events.length-1);
+  openEvent(currentEventIndex);
 }
 
 // 開く
@@ -193,32 +169,22 @@ function renderEvent(){
   players.innerHTML="";
   e.players.forEach((p,i)=>{
     players.innerHTML+=`
-    <div class="row ${p.attend?"":"absent-row"}">
-      <div style="flex:1">${p.name}（${p.grade}年）</div>
-      <button onclick="toggleAttend(${i})">${p.attend?"出席":"欠席"}</button>
-    </div>`;
+      <div class="row ${p.attend?"":"absent-row"}">
+        <div style="flex:1">${p.name}（${p.grade}年）</div>
+        <button onclick="toggleAttend(${i})">${p.attend?"出席":"欠席"}</button>
+      </div>`;
   });
 
   cars.innerHTML="";
   e.cars.forEach((c,i)=>{
     cars.innerHTML+=`
-    <div class="row">
-      <div style="width:60px">${c.name}</div>
-      <button class="status-btn ${statusClass(c.status)}"
-        onclick="toggleStatus(${i})">${c.status}</button>
-      定員 ${c.cap}
-      <button class="use-btn ${c.use?"use-on":"use-off"}"
-        ${c.status==="配車不可"?"disabled":""}
-        onclick="toggleUse(${i})">${c.use?"使用":"未使用"}</button>
-    </div>`;
+      <div class="row">
+        <div style="width:70px">${c.name}</div>
+        定員 ${c.cap}
+        <button onclick="toggleUse(${i})">${c.use?"使用":"未使用"}</button>
+      </div>`;
   });
   updateStatus();
-}
-
-function statusClass(s){
-  if(s==="配車可") return "st-ok";
-  if(s==="配車不可") return "st-ng";
-  return "st-none";
 }
 
 function toggleAttend(i){
@@ -227,18 +193,8 @@ function toggleAttend(i){
   renderEvent();
 }
 
-function toggleStatus(i){
-  const c=events[currentEventIndex].cars[i];
-  if(c.status==="未回答") c.status="配車可";
-  else if(c.status==="配車可") c.status="配車不可";
-  else c.status="未回答";
-  if(c.status==="配車不可") c.use=false;
-  renderEvent();
-}
-
 function toggleUse(i){
   const c=events[currentEventIndex].cars[i];
-  if(c.status==="配車不可") return;
   c.use=!c.use;
   renderEvent();
 }
@@ -249,32 +205,18 @@ function updateStatus(){
   const attend=e.players.filter(p=>p.attend).length;
   attendCount.textContent=attend;
 
-  let cap=0,carsUsed=0;
-  e.cars.forEach(c=>{
-    if(c.use){
-      carsUsed++;
-      cap+=c.cap;
-    }
-  });
+  let cap=0;
+  e.cars.forEach(c=>{ if(c.use) cap+=c.cap; });
 
-  if(cap<attend){
-    capacityStatus.innerHTML=`
-    出席 ${attend}名<br>
-    実使用定員 ${cap}名<br>
-    ${carsUsed}台配車<br>
-    <span class="status-ng">⚠ ${attend-cap}名分 不足</span>`;
-  }else{
-    capacityStatus.innerHTML=`
-    出席 ${attend}名<br>
-    実使用定員 ${cap}名<br>
-    ${carsUsed}台配車<br>
-    <span class="status-ok">✓ 配車OK</span>`;
-  }
+  capacityStatus.innerHTML =
+    cap<attend
+      ? `<span class="status-ng">不足 ${attend-cap}名</span>`
+      : `<span class="status-ok">配車OK</span>`;
 }
 
 // 初期
 renderList();
-});
 </script>
+
 </body>
 </html>
