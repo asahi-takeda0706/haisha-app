@@ -74,6 +74,19 @@ h2,h3{margin:6px 0}
 </div>
 
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+
+  const listScreen = document.getElementById("listScreen");
+  const editScreen = document.getElementById("editScreen");
+  const eventList = document.getElementById("eventList");
+  const eventTitle = document.getElementById("eventTitle");
+  const eventDate = document.getElementById("eventDate");
+  const eventName = document.getElementById("eventName");
+  const players = document.getElementById("players");
+  const cars = document.getElementById("cars");
+  const attendCount = document.getElementById("attendCount");
+  const capacityStatus = document.getElementById("capacityStatus");
+  
 // ===== マスター（実名） =====
 const playersMaster = [
 {name:"小路口 悠太郎",grade:5},
@@ -261,6 +274,7 @@ function updateStatus(){
 
 // 初期
 renderList();
+});
 </script>
 </body>
 </html>
