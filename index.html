@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>配車管理アプリ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:10px}
+h2,h3{margin:6px 0}
+.section{background:#fff;border-radius:12px;padding:10px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:6px;padding:8px;border-bottom:1px solid #eee}
+.row:last-child{border-bottom:none}
+.big-btn{padding:10px;font-size:16px;border-radius:8px;border:none;background:#4da3ff;color:#fff;width:100%}
+.flex{display:flex;gap:10px}
+.card{flex:1;background:#fff;border-radius:12px;padding:10px}
+
+.absent-row{background:#ffe5e5}
+
+.status-btn{padding:6px 10px;border-radius:8px;border:none}
+.st-none{background:#ddd}
+.st-ok{background:#bde0ff}
+.st-ng{background:#ffbdbd}
+
+.use-btn{padding:6px 10px;border-radius:8px;border:none}
+.use-off{background:#ddd}
+.use-on{background:#b6f2c2}
+
+.hidden{display:none}
+.status-ok{color:green;font-weight:bold}
+.status-ng{color:red;font-weight:bold}
+</style>
+</head>
+<body>
+
+<!-- 一覧画面 -->
+<div id="listScreen">
+<h2>配車一覧</h2>
+<div id="eventList"></div>
+<button class="big-btn" onclick="createEvent()">＋ 新しい配車を作成</button>
+</div>
+
+<!-- 編集画面 -->
+<div id="editScreen" class="hidden">
+<h2 id="eventTitle"></h2>
+
+<div class="section">
+  <div class="row">
+    <input type="date" id="eventDate">
+    <input type="text" id="eventName" placeholder="イベント名" style="flex:1">
+  </div>
+</div>
+
+<div class="flex">
+  <div class="card">
+    <h3>選手出欠</h3>
+    <div id="players"></div>
+    出席人数：<strong><span id="attendCount">0</span>名</strong>
+  </div>
+
+  <div class="card">
+    <h3>車両提供</h3>
+    <div id="cars"></div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>配車状況</h3>
+  <div id="capacityStatus"></div>
+</div>
+
+<div class="section">
+  <button class="big-btn" onclick="backToList()">← 一覧へ戻る</button>
+</div>
+</div>
+
+<script>
+// ===== マスター（実名） =====
+const playersMaster = [
+{name:"小路口 悠太郎",grade:5},
+{name:"杉山 朔弥",grade:5},
+{name:"武田 諒太郎",grade:5},
+{name:"近藤 諒平",grade:5},
+{name:"畑本 颯太",grade:5},
+{name:"長谷 紘希",grade:4},
+{name:"杉野森 絃",grade:4},
+{name:"菅原 奏奈",grade:4},
+{name:"菅原 奏乃",grade:4},
+{name:"野沢 有史",grade:4},
+{name:"濱谷 龍希",grade:4},
+{name:"安部 晴也",grade:4},
+{name:"鈴木 凱斗",grade:4},
+{name:"貝塚 大知",grade:4},
+{name:"能戸 達己",grade:4},
+{name:"河嶋 翔塁",grade:4},
+{name:"鳴嶋 拓希",grade:3},
+{name:"永田 涼",grade:3},
+{name:"飛田 隆太",grade:3},
+{name:"畑本 弘太",grade:3}
+];
+
+const carMaster = [
+{name:"武田",cap:4},
+{name:"小路口",cap:6},
+{name:"杉山",cap:3},
+{name:"畑本",cap:6},
+{name:"近藤",cap:3},
+{name:"長谷",cap:3},
+{name:"杉野森",cap:3},
+{name:"菅原",cap:3},
+{name:"野沢",cap:5},
+{name:"安部",cap:6},
+{name:"鈴木",cap:6},
+{name:"貝塚",cap:3},
+{name:"能戸",cap:5},
+{name:"河嶋",cap:5},
+{name:"鳴嶋",cap:1},
+{name:"永田",cap:5},
+{name:"飛田",cap:4}
+];
+
+// ===== イベントデータ =====
+let events = JSON.parse(localStorage.getItem("events")) || [];
+let currentEventIndex = null;
+
+// 一覧表示
+function renderList(){
+  eventList.innerHTML="";
+  events.forEach((e,i)=>{
+    const d = e.date ? new Date(e.date).toLocaleDateString() : "日付未設定";
+    eventList.innerHTML+=`
+    <div class="section" onclick="openEvent(${i})">
+      <strong>${e.name}</strong><br>${d}
+    </div>`;
+  });
+}
+
+// 新規作成
+function createEvent(){
+  events.push({
+    name:"新しい配車",
+    date:"",
+    players: playersMaster.map(p=>({...p,attend:true})),
+    cars: carMaster.map(c=>({...c,status:"未回答",use:false}))
+  });
+  saveEvents();
+  renderList();
+  openEvent(events.length-1);
+}
+
+// 開く
+function openEvent(i){
+  currentEventIndex=i;
+  const e=events[i];
+  listScreen.classList.add("hidden");
+  editScreen.classList.remove("hidden");
+  eventTitle.textContent=e.name;
+  eventDate.value=e.date;
+  eventName.value=e.name;
+  renderEvent();
+}
+
+// 戻る
+function backToList(){
+  const e=events[currentEventIndex];
+  e.name=eventName.value;
+  e.date=eventDate.value;
+  saveEvents();
+  editScreen.classList.add("hidden");
+  listScreen.classList.remove("hidden");
+  renderList();
+}
+
+function saveEvents(){
+  localStorage.setItem("events",JSON.stringify(events));
+}
+
+// 描画
+function renderEvent(){
+  const e=events[currentEventIndex];
+  players.innerHTML="";
+  e.players.forEach((p,i)=>{
+    players.innerHTML+=`
+    <div class="row ${p.attend?"":"absent-row"}">
+      <div style="flex:1">${p.name}（${p.grade}年）</div>
+      <button onclick="toggleAttend(${i})">${p.attend?"出席":"欠席"}</button>
+    </div>`;
+  });
+
+  cars.innerHTML="";
+  e.cars.forEach((c,i)=>{
+    cars.innerHTML+=`
+    <div class="row">
+      <div style="width:60px">${c.name}</div>
+      <button class="status-btn ${statusClass(c.status)}"
+        onclick="toggleStatus(${i})">${c.status}</button>
+      定員 ${c.cap}
+      <button class="use-btn ${c.use?"use-on":"use-off"}"
+        ${c.status==="配車不可"?"disabled":""}
+        onclick="toggleUse(${i})">${c.use?"使用":"未使用"}</button>
+    </div>`;
+  });
+  updateStatus();
+}
+
+function statusClass(s){
+  if(s==="配車可") return "st-ok";
+  if(s==="配車不可") return "st-ng";
+  return "st-none";
+}
+
+function toggleAttend(i){
+  const p=events[currentEventIndex].players[i];
+  p.attend=!p.attend;
+  renderEvent();
+}
+
+function toggleStatus(i){
+  const c=events[currentEventIndex].cars[i];
+  if(c.status==="未回答") c.status="配車可";
+  else if(c.status==="配車可") c.status="配車不可";
+  else c.status="未回答";
+  if(c.status==="配車不可") c.use=false;
+  renderEvent();
+}
+
+function toggleUse(i){
+  const c=events[currentEventIndex].cars[i];
+  if(c.status==="配車不可") return;
+  c.use=!c.use;
+  renderEvent();
+}
+
+// 集計
+function updateStatus(){
+  const e=events[currentEventIndex];
+  const attend=e.players.filter(p=>p.attend).length;
+  attendCount.textContent=attend;
+
+  let cap=0,carsUsed=0;
+  e.cars.forEach(c=>{
+    if(c.use){
+      carsUsed++;
+      cap+=c.cap;
+    }
+  });
+
+  if(cap<attend){
+    capacityStatus.innerHTML=`
+    出席 ${attend}名<br>
+    実使用定員 ${cap}名<br>
+    ${carsUsed}台配車<br>
+    <span class="status-ng">⚠ ${attend-cap}名分 不足</span>`;
+  }else{
+    capacityStatus.innerHTML=`
+    出席 ${attend}名<br>
+    実使用定員 ${cap}名<br>
+    ${carsUsed}台配車<br>
+    <span class="status-ok">✓ 配車OK</span>`;
+  }
+}
+
+// 初期
+renderList();
+</script>
+</body>
+</html>
