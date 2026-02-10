@@ -7,44 +7,24 @@
 <link rel="icon" href="data:,">
 
 <style>
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #f4f6f8;
-}
-header {
-  background: #4a90e2;
-  color: #fff;
-  padding: 14px;
-  font-size: 20px;
-}
-section {
-  padding: 14px;
-}
+body { margin:0; font-family:system-ui,sans-serif; background:#f4f6f8; }
+header { background:#4a90e2; color:#fff; padding:14px; font-size:20px; }
+section { padding:14px; }
 .button {
-  background: #4a90e2;
-  color: #fff;
-  padding: 12px;
-  border-radius: 8px;
-  margin: 10px 0;
-  text-align: center;
-  cursor: pointer;
+  background:#4a90e2; color:#fff;
+  padding:12px; border-radius:8px;
+  margin:10px 0; text-align:center; cursor:pointer;
 }
 .card {
-  background: #fff;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 8px;
+  background:#fff; padding:12px;
+  border-radius:8px; margin-bottom:8px;
 }
-.hidden {
-  display: none;
-}
+.hidden { display:none; }
 input {
-  width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
-  font-size: 16px;
+  width:100%; padding:10px;
+  margin-bottom:10px; font-size:16px;
 }
+.small { font-size:13px; color:#666; }
 </style>
 </head>
 
@@ -57,7 +37,6 @@ input {
   <h2>配車一覧</h2>
   <div id="eventList"></div>
   <div class="button" id="goCreate">＋ 新しい配車を作成</div>
-  <div class="button" id="goMaster">マスター管理</div>
 </section>
 
 <!-- 作成 -->
@@ -66,74 +45,79 @@ input {
   <input id="eventName" placeholder="イベント名">
   <input id="eventDate" type="date">
   <div class="button" id="saveEvent">保存</div>
-  <div class="button" id="backFromCreate">戻る</div>
-</section>
-
-<!-- マスター -->
-<section id="screen-master" class="hidden">
-  <h2>マスター管理</h2>
-  <p>※ 次工程で統合予定</p>
-  <div class="button" id="backFromMaster">戻る</div>
+  <div class="button" id="back">← 戻る</div>
 </section>
 
 <script>
 (() => {
   const screens = {
     list: document.getElementById("screen-list"),
-    create: document.getElementById("screen-create"),
-    master: document.getElementById("screen-master")
+    create: document.getElementById("screen-create")
   };
 
   const eventList = document.getElementById("eventList");
   let events = [];
 
-  function show(screen) {
-    Object.values(screens).forEach(s => s.classList.add("hidden"));
-    screens[screen].classList.remove("hidden");
+  function show(name){
+    Object.values(screens).forEach(s=>s.classList.add("hidden"));
+    screens[name].classList.remove("hidden");
   }
 
-  function load() {
-    const data = localStorage.getItem("events");
-    events = data ? JSON.parse(data) : [];
+  function load(){
+    try{
+      const raw = JSON.parse(localStorage.getItem("events"));
+      if(Array.isArray(raw)){
+        // 壊れたデータ除去
+        events = raw.filter(e => e && e.name && e.date);
+      }
+    }catch(e){
+      events = [];
+    }
+
+    // 初回用サンプル
+    if(events.length === 0){
+      events.push({
+        name:"サンプル配車",
+        date:new Date().toISOString().slice(0,10)
+      });
+      save();
+    }
   }
 
-  function save() {
+  function save(){
     localStorage.setItem("events", JSON.stringify(events));
   }
 
-  function render() {
-    eventList.innerHTML = "";
-    if (events.length === 0) {
-      eventList.innerHTML = "<p>配車はまだありません</p>";
-      return;
-    }
-    events.forEach(e => {
-      const div = document.createElement("div");
-      div.className = "card";
-      div.textContent = `${e.date}　${e.name}`;
+  function render(){
+    eventList.innerHTML="";
+    events.forEach(e=>{
+      const div=document.createElement("div");
+      div.className="card";
+      div.innerHTML=`<strong>${e.name}</strong><div class="small">${e.date}</div>`;
       eventList.appendChild(div);
     });
   }
 
-  document.getElementById("goCreate").addEventListener("click", () => show("create"));
-  document.getElementById("goMaster").addEventListener("click", () => show("master"));
-  document.getElementById("backFromCreate").addEventListener("click", () => { render(); show("list"); });
-  document.getElementById("backFromMaster").addEventListener("click", () => show("list"));
+  document.getElementById("goCreate").onclick=()=>show("create");
+  document.getElementById("back").onclick=()=>{
+    render();
+    show("list");
+  };
 
-  document.getElementById("saveEvent").addEventListener("click", () => {
-    const name = document.getElementById("eventName").value.trim();
-    const date = document.getElementById("eventDate").value;
-    if (!name || !date) {
+  document.getElementById("saveEvent").onclick=()=>{
+    const name=document.getElementById("eventName").value.trim();
+    const date=document.getElementById("eventDate").value;
+    if(!name||!date){
       alert("イベント名と日付を入力してください");
       return;
     }
-    events.push({ name, date });
+    events.push({name,date});
     save();
-    document.getElementById("eventName").value = "";
-    document.getElementById("eventDate").value = "";
+    document.getElementById("eventName").value="";
+    document.getElementById("eventDate").value="";
     render();
     show("list");
-  });
+  };
 
   load();
   render();
