@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>配車管理アプリ（完成・安定版）</title>
+<title>配車管理アプリ（完成・最終安定版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
 
@@ -32,14 +32,14 @@ input {
 
 <header>配車管理アプリ</header>
 
-<!-- 一覧 -->
+<!-- 一覧画面 -->
 <section id="screen-list">
   <h2>配車一覧</h2>
   <div id="eventList"></div>
   <div class="button" id="goCreate">＋ 新しい配車を作成</div>
 </section>
 
-<!-- 作成 -->
+<!-- 作成画面 -->
 <section id="screen-create" class="hidden">
   <h2>新しい配車</h2>
   <input id="eventName" placeholder="イベント名">
@@ -50,77 +50,119 @@ input {
 
 <script>
 (() => {
-  const screens = {
-    list: document.getElementById("screen-list"),
-    create: document.getElementById("screen-create")
-  };
 
-  const eventList = document.getElementById("eventList");
+  /* ===== DOM ===== */
+  const screenList   = document.getElementById("screen-list");
+  const screenCreate = document.getElementById("screen-create");
+  const eventList    = document.getElementById("eventList");
+
+  const goCreate = document.getElementById("goCreate");
+  const backBtn  = document.getElementById("back");
+  const saveBtn  = document.getElementById("saveEvent");
+
+  const eventName = document.getElementById("eventName");
+  const eventDate = document.getElementById("eventDate");
+
+  /* ===== 状態 ===== */
   let events = [];
 
-  function show(name){
-    Object.values(screens).forEach(s=>s.classList.add("hidden"));
-    screens[name].classList.remove("hidden");
+  /* ===== 画面切替 ===== */
+  function showList(){
+    screenCreate.classList.add("hidden");
+    screenList.classList.remove("hidden");
+  }
+  function showCreate(){
+    screenList.classList.add("hidden");
+    screenCreate.classList.remove("hidden");
   }
 
-  function load(){
-    try{
-      const raw = JSON.parse(localStorage.getItem("events"));
-      if(Array.isArray(raw)){
-        // 壊れたデータ除去
-        events = raw.filter(e => e && e.name && e.date);
-      }
-    }catch(e){
-      events = [];
+  /* ===== localStorage 正規化ロード ===== */
+  function loadEvents(){
+    let raw;
+    try {
+      raw = JSON.parse(localStorage.getItem("events"));
+    } catch {
+      raw = [];
     }
 
-    // 初回用サンプル
-    if(events.length === 0){
+    if (!Array.isArray(raw)) raw = [];
+
+    // undefined / 壊れた要素を完全排除
+    events = raw.filter(e =>
+      e &&
+      typeof e === "object" &&
+      typeof e.name === "string" &&
+      typeof e.date === "string" &&
+      e.name.trim() !== ""
+    );
+
+    // 初回 or 全滅時は必ず1件入れる
+    if (events.length === 0) {
       events.push({
-        name:"サンプル配車",
-        date:new Date().toISOString().slice(0,10)
+        name: "サンプル配車",
+        date: new Date().toISOString().slice(0,10)
       });
-      save();
     }
+
+    saveEvents();
   }
 
-  function save(){
+  function saveEvents(){
     localStorage.setItem("events", JSON.stringify(events));
   }
 
-  function render(){
-    eventList.innerHTML="";
-    events.forEach(e=>{
-      const div=document.createElement("div");
-      div.className="card";
-      div.innerHTML=`<strong>${e.name}</strong><div class="small">${e.date}</div>`;
+  /* ===== 描画 ===== */
+  function renderList(){
+    eventList.innerHTML = "";
+
+    events.forEach(e => {
+      const name = e.name ?? "";
+      const date = e.date ?? "";
+
+      if (!name || !date) return; // 二重ガード
+
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <strong>${name}</strong>
+        <div class="small">${date}</div>
+      `;
       eventList.appendChild(div);
     });
   }
 
-  document.getElementById("goCreate").onclick=()=>show("create");
-  document.getElementById("back").onclick=()=>{
-    render();
-    show("list");
+  /* ===== イベント ===== */
+  goCreate.onclick = showCreate;
+
+  backBtn.onclick = () => {
+    renderList();
+    showList();
   };
 
-  document.getElementById("saveEvent").onclick=()=>{
-    const name=document.getElementById("eventName").value.trim();
-    const date=document.getElementById("eventDate").value;
-    if(!name||!date){
+  saveBtn.onclick = () => {
+    const name = eventName.value.trim();
+    const date = eventDate.value;
+
+    if (!name || !date) {
       alert("イベント名と日付を入力してください");
       return;
     }
-    events.push({name,date});
-    save();
-    document.getElementById("eventName").value="";
-    document.getElementById("eventDate").value="";
-    render();
-    show("list");
+
+    events.push({ name, date });
+    saveEvents();
+
+    eventName.value = "";
+    eventDate.value = "";
+
+    renderList();
+    showList();
   };
 
-  load();
-  render();
+  /* ===== 起動 ===== */
+  loadEvents();
+  renderList();
+  showList();
+
 })();
 </script>
 
