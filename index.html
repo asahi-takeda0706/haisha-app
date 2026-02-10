@@ -2,252 +2,139 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>配車管理アプリ（完成版）</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>配車管理アプリ（完成版・修正版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:10px}
-h2,h3{margin:6px 0}
-.section{background:#fff;border-radius:12px;padding:10px;margin-bottom:10px}
-.row{display:flex;align-items:center;gap:6px;padding:8px;border-bottom:1px solid #eee}
-.row:last-child{border-bottom:none}
-.big-btn{padding:10px;font-size:16px;border-radius:8px;border:none;background:#4da3ff;color:#fff;width:100%}
-.flex{display:flex;gap:10px}
-.card{flex:1;background:#fff;border-radius:12px;padding:10px}
-.hidden{display:none}
-
-/* 出欠 */
-.absent{background:#ffe5e5}
-.btn-attend{background:#4da3ff;color:#000}
-.btn-absent{background:#ff6b6b;color:#000}
-
-/* 車両 */
-.status-btn{padding:6px 10px;border-radius:8px;border:none}
-.st-none{background:#ddd}
-.st-ok{background:#4da3ff}
-.st-ng{background:#ff6b6b}
-.use-btn{padding:6px 10px;border-radius:8px;border:none}
-.use-on{background:#4caf50}
-.use-off{background:#ccc}
-
-.status-ok{color:green;font-weight:bold}
-.status-ng{color:red;font-weight:bold}
-input[type=number]{width:55px;font-size:16px}
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: #f4f6f8;
+}
+header {
+  background: #4a90e2;
+  color: #fff;
+  padding: 12px;
+  font-size: 20px;
+}
+section {
+  padding: 12px;
+}
+.button {
+  background: #4a90e2;
+  color: #fff;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: center;
+  margin: 8px 0;
+  cursor: pointer;
+}
+.list-item {
+  background: #fff;
+  padding: 10px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+}
+.hidden {
+  display: none;
+}
 </style>
 </head>
+
 <body>
 
-<!-- 一覧 -->
-<div id="listScreen">
-<h2>配車一覧</h2>
-<div id="eventList"></div>
-<button class="big-btn" onclick="createEvent()">＋ 新しい配車を作成</button>
-<button class="big-btn" onclick="openMaster()">マスター管理</button>
-</div>
+<header>配車管理アプリ</header>
 
-<!-- 編集 -->
-<div id="editScreen" class="hidden">
-<h2 id="eventTitle"></h2>
+<section id="listScreen">
+  <h2>配車一覧</h2>
+  <div id="eventList"></div>
 
-<div class="section">
-  <div class="row">
-    <input type="date" id="eventDate">
-    <input type="text" id="eventName" placeholder="イベント名" style="flex:1">
-  </div>
-</div>
+  <div class="button" onclick="openCreateScreen()">＋ 新しい配車を作成</div>
+  <div class="button" onclick="openMasterScreen()">マスター管理</div>
+</section>
 
-<div class="flex">
-  <div class="card">
-    <h3>選手出欠</h3>
-    <div id="players"></div>
-    出席人数：<strong><span id="attendCount">0</span>名</strong>
-  </div>
+<section id="createScreen" class="hidden">
+  <h2>新しい配車</h2>
+  <input id="eventName" placeholder="イベント名" style="width:100%;padding:8px;"><br><br>
+  <input id="eventDate" type="date" style="width:100%;padding:8px;"><br><br>
+  <div class="button" onclick="saveEvent()">保存</div>
+  <div class="button" onclick="backToList()">戻る</div>
+</section>
 
-  <div class="card">
-    <h3>車両提供</h3>
-    <div id="cars"></div>
-  </div>
-</div>
-
-<div class="section">
-  <h3>配車状況</h3>
-  <div id="capacityStatus"></div>
-</div>
-
-<div class="section">
-  <button class="big-btn" onclick="backToList()">← 一覧へ戻る</button>
-</div>
-</div>
-
-<!-- マスター -->
-<div id="masterScreen" class="hidden">
-<h2>マスター管理</h2>
-
-<div class="section">
-<h3>選手マスター</h3>
-<button onclick="sortPlayersGrade()">学年順</button>
-<button onclick="sortPlayersName()">名前順</button>
-<div id="masterPlayers"></div>
-<button class="big-btn" onclick="addPlayer()">＋ 選手追加</button>
-</div>
-
-<div class="section">
-<h3>車両マスター</h3>
-<button onclick="sortCarsCap()">定員順</button>
-<button onclick="sortCarsName()">名前順</button>
-<div id="masterCars"></div>
-<button class="big-btn" onclick="addCar()">＋ 車両追加</button>
-</div>
-
-<div class="section">
-<button class="big-btn" onclick="closeMaster()">← 戻る</button>
-</div>
-</div>
+<section id="masterScreen" class="hidden">
+  <h2>マスター管理</h2>
+  <p>（ここは今後拡張）</p>
+  <div class="button" onclick="backToList()">戻る</div>
+</section>
 
 <script>
-const $=id=>document.getElementById(id);
-const listScreen=$("listScreen"),editScreen=$("editScreen"),masterScreen=$("masterScreen");
-const eventList=$("eventList"),players=$("players"),cars=$("cars");
-const attendCount=$("attendCount"),capacityStatus=$("capacityStatus");
-const eventTitle=$("eventTitle"),eventDate=$("eventDate"),eventName=$("eventName");
+/* ===== 初期データ ===== */
+let events = [];
 
-/* マスター */
-let playersMaster=JSON.parse(localStorage.getItem("playersMaster"))||[
-{name:"小路口 悠太郎",grade:"小5"},{name:"杉山 朔弥",grade:"小5"},
-{name:"武田 諒太郎",grade:"小5"},{name:"近藤 諒平",grade:"小5"},
-{name:"畑本 颯太",grade:"小5"},{name:"長谷 紘希",grade:"小4"},
-{name:"杉野森 絃",grade:"小4"},{name:"菅原 奏奈",grade:"小4"},
-{name:"菅原 奏乃",grade:"小4"},{name:"野沢 有史",grade:"小4"},
-{name:"濱谷 龍希",grade:"小4"},{name:"安部 晴也",grade:"小4"},
-{name:"鈴木 凱斗",grade:"小4"},{name:"貝塚 大知",grade:"小4"},
-{name:"能戸 達己",grade:"小4"},{name:"河嶋 翔塁",grade:"小4"},
-{name:"鳴嶋 拓希",grade:"小3"},{name:"永田 涼",grade:"小3"},
-{name:"飛田 隆太",grade:"小3"},{name:"畑本 弘太",grade:"小3"}
-];
-let carMaster=JSON.parse(localStorage.getItem("carMaster"))||[
-{name:"武田",cap:4},{name:"小路口",cap:6},{name:"杉山",cap:3},
-{name:"畑本",cap:6},{name:"近藤",cap:3},{name:"長谷",cap:3},
-{name:"杉野森",cap:3},{name:"菅原",cap:3},{name:"野沢",cap:5},
-{name:"安部",cap:6},{name:"鈴木",cap:6},{name:"貝塚",cap:3},
-{name:"能戸",cap:5},{name:"河嶋",cap:5},{name:"鳴嶋",cap:1},
-{name:"永田",cap:5},{name:"飛田",cap:4}
-];
+/* ===== DOM ===== */
+const listScreen = document.getElementById("listScreen");
+const createScreen = document.getElementById("createScreen");
+const masterScreen = document.getElementById("masterScreen");
+const eventList = document.getElementById("eventList");
 
-/* イベント */
-let events=JSON.parse(localStorage.getItem("events"))||[];
-let cur=null;
+/* ===== 起動 ===== */
+loadEvents();
+renderList();
 
-/* 一覧 */
-function renderList(){
-  eventList.innerHTML="";
-  events.forEach((e,i)=>{
-    eventList.innerHTML+=`
-    <div class="section" onclick="openEvent(${i})">
-      <strong>${e.name}</strong><br>${e.date||""}
-    </div>`;
-  });
+/* ===== 画面切替 ===== */
+function openCreateScreen() {
+  listScreen.classList.add("hidden");
+  masterScreen.classList.add("hidden");
+  createScreen.classList.remove("hidden");
 }
-function createEvent(){
-  events.push({
-    name:"新しい配車",date:"",
-    players:playersMaster.map(p=>({...p,attend:true})),
-    cars:carMaster.map(c=>({...c,status:"未回答",capNow:"",use:false}))
-  });
-  save(); openEvent(events.length-1);
+
+function openMasterScreen() {
+  listScreen.classList.add("hidden");
+  createScreen.classList.add("hidden");
+  masterScreen.classList.remove("hidden");
 }
-function openEvent(i){
-  cur=i; listScreen.classList.add("hidden"); editScreen.classList.remove("hidden");
-  const e=events[i];
-  eventTitle.textContent=e.name; eventDate.value=e.date; eventName.value=e.name;
-  renderEvent();
-}
-function backToList(){
-  const e=events[cur]; e.name=eventName.value; e.date=eventDate.value;
-  save(); editScreen.classList.add("hidden"); listScreen.classList.remove("hidden");
+
+function backToList() {
+  createScreen.classList.add("hidden");
+  masterScreen.classList.add("hidden");
+  listScreen.classList.remove("hidden");
   renderList();
 }
-function save(){localStorage.setItem("events",JSON.stringify(events));}
 
-/* 描画 */
-function renderEvent(){
-  const e=events[cur];
-  players.innerHTML="";
-  e.players.forEach((p,i)=>{
-    players.innerHTML+=`
-    <div class="row ${p.attend?"":"absent"}">
-      <div style="flex:1">${p.name}（${p.grade}）</div>
-      <button class="big-btn ${p.attend?"btn-attend":"btn-absent"}"
-        onclick="pAttend(${i})">${p.attend?"出席":"欠席"}</button>
-    </div>`;
+/* ===== イベント処理 ===== */
+function saveEvent() {
+  const name = document.getElementById("eventName").value;
+  const date = document.getElementById("eventDate").value;
+
+  if (!name || !date) {
+    alert("イベント名と日付を入力してください");
+    return;
+  }
+
+  events.push({ name, date });
+  localStorage.setItem("events", JSON.stringify(events));
+
+  document.getElementById("eventName").value = "";
+  document.getElementById("eventDate").value = "";
+
+  backToList();
+}
+
+function loadEvents() {
+  const data = localStorage.getItem("events");
+  events = data ? JSON.parse(data) : [];
+}
+
+function renderList() {
+  eventList.innerHTML = "";
+  events.forEach((e, i) => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+    div.textContent = `${e.date}　${e.name}`;
+    eventList.appendChild(div);
   });
-  cars.innerHTML="";
-  e.cars.forEach((c,i)=>{
-    cars.innerHTML+=`
-    <div class="row">
-      <div style="width:60px">${c.name}</div>
-      <button class="status-btn ${stClass(c.status)}"
-        onclick="cStatus(${i})">${c.status}</button>
-      定員 <input type="number" value="${c.capNow}" placeholder="${c.cap}"
-        oninput="cCap(${i},this.value)">
-      <button class="use-btn ${c.use?"use-on":"use-off"}"
-        ${c.status==="配車不可"?"disabled":""}
-        onclick="cUse(${i})">${c.use?"使用":"未使用"}</button>
-    </div>`;
-  });
-  updateStatus();
 }
-const stClass=s=>s==="配車可"?"st-ok":s==="配車不可"?"st-ng":"st-none";
-function pAttend(i){events[cur].players[i].attend^=1; renderEvent();}
-function cStatus(i){
-  const c=events[cur].cars[i];
-  c.status=c.status==="未回答"?"配車可":c.status==="配車可"?"配車不可":"未回答";
-  if(c.status==="配車不可")c.use=false;
-  renderEvent();
-}
-function cUse(i){const c=events[cur].cars[i]; if(c.status!=="配車不可"){c.use^=1; renderEvent();}}
-function cCap(i,v){events[cur].cars[i].capNow=v; updateStatus();}
-
-/* 集計 */
-function updateStatus(){
-  const e=events[cur];
-  const a=e.players.filter(p=>p.attend).length;
-  attendCount.textContent=a;
-  let cap=0,carsUsed=0;
-  e.cars.forEach(c=>{if(c.use){carsUsed++; cap+=Number(c.capNow||c.cap);}});
-  capacityStatus.innerHTML=cap<a
-    ?`⚠ ${a-cap}名分 不足`
-    :`✓ 配車OK（${carsUsed}台）`;
-}
-
-/* マスター */
-function openMaster(){listScreen.classList.add("hidden"); masterScreen.classList.remove("hidden"); renderMaster();}
-function closeMaster(){
-  localStorage.setItem("playersMaster",JSON.stringify(playersMaster));
-  localStorage.setItem("carMaster",JSON.stringify(carMaster));
-  location.reload();
-}
-function renderMaster(){
-  $("masterPlayers").innerHTML=playersMaster.map((p,i)=>`
-    <div class="row">
-      <input value="${p.name}" onchange="playersMaster[${i}].name=this.value">
-      <input value="${p.grade}" style="width:60px" onchange="playersMaster[${i}].grade=this.value">
-      <button onclick="playersMaster.splice(${i},1);renderMaster()">削除</button>
-    </div>`).join("");
-  $("masterCars").innerHTML=carMaster.map((c,i)=>`
-    <div class="row">
-      <input value="${c.name}" onchange="carMaster[${i}].name=this.value">
-      定員 <input type="number" value="${c.cap}" onchange="carMaster[${i}].cap=this.value">
-      <button onclick="carMaster.splice(${i},1);renderMaster()">削除</button>
-    </div>`).join("");
-}
-const g=n=>Number(n.replace("小",""));
-const sortPlayersGrade=()=>{playersMaster.sort((a,b)=>g(b.grade)-g(a.grade));renderMaster();}
-const sortPlayersName=()=>{playersMaster.sort((a,b)=>a.name.localeCompare(b.name,"ja"));renderMaster();}
-const sortCarsCap=()=>{carMaster.sort((a,b)=>b.cap-a.cap);renderMaster();}
-const sortCarsName=()=>{carMaster.sort((a,b)=>a.name.localeCompare(b.name,"ja"));renderMaster();}
-const addPlayer=()=>{playersMaster.push({name:"新規選手",grade:"小?"});renderMaster();}
-const addCar=()=>{carMaster.push({name:"新規家庭",cap:4});renderMaster();}
-
-renderList();
 </script>
+
 </body>
 </html>
