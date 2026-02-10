@@ -2,44 +2,48 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>配車管理アプリ（完成版・安定修正版）</title>
+<title>配車管理アプリ（完成・安定版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
-<!-- favicon 404 対策 -->
 <link rel="icon" href="data:,">
 
 <style>
 body {
-  font-family: system-ui, sans-serif;
   margin: 0;
+  font-family: system-ui, sans-serif;
   background: #f4f6f8;
 }
 header {
   background: #4a90e2;
   color: #fff;
-  padding: 12px;
+  padding: 14px;
   font-size: 20px;
 }
 section {
-  padding: 12px;
+  padding: 14px;
 }
 .button {
   background: #4a90e2;
   color: #fff;
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
+  margin: 10px 0;
   text-align: center;
-  margin: 8px 0;
   cursor: pointer;
 }
-.list-item {
+.card {
   background: #fff;
-  padding: 10px;
-  margin-bottom: 6px;
-  border-radius: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
 }
 .hidden {
   display: none;
+}
+input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 16px;
 }
 </style>
 </head>
@@ -48,106 +52,92 @@ section {
 
 <header>配車管理アプリ</header>
 
-<section id="listScreen">
+<!-- 一覧 -->
+<section id="screen-list">
   <h2>配車一覧</h2>
   <div id="eventList"></div>
-
-  <div class="button" id="btnCreate">＋ 新しい配車を作成</div>
-  <div class="button" id="btnMaster">マスター管理</div>
+  <div class="button" id="goCreate">＋ 新しい配車を作成</div>
+  <div class="button" id="goMaster">マスター管理</div>
 </section>
 
-<section id="createScreen" class="hidden">
+<!-- 作成 -->
+<section id="screen-create" class="hidden">
   <h2>新しい配車</h2>
-  <input id="eventName" placeholder="イベント名" style="width:100%;padding:8px;"><br><br>
-  <input id="eventDate" type="date" style="width:100%;padding:8px;"><br><br>
-  <div class="button" id="btnSave">保存</div>
-  <div class="button" id="btnBack1">戻る</div>
+  <input id="eventName" placeholder="イベント名">
+  <input id="eventDate" type="date">
+  <div class="button" id="saveEvent">保存</div>
+  <div class="button" id="backFromCreate">戻る</div>
 </section>
 
-<section id="masterScreen" class="hidden">
+<!-- マスター -->
+<section id="screen-master" class="hidden">
   <h2>マスター管理</h2>
-  <p>（ここは今後統合予定）</p>
-  <div class="button" id="btnBack2">戻る</div>
+  <p>※ 次工程で統合予定</p>
+  <div class="button" id="backFromMaster">戻る</div>
 </section>
 
 <script>
-/* ===== データ ===== */
-let events = [];
+(() => {
+  const screens = {
+    list: document.getElementById("screen-list"),
+    create: document.getElementById("screen-create"),
+    master: document.getElementById("screen-master")
+  };
 
-/* ===== DOM ===== */
-const listScreen = document.getElementById("listScreen");
-const createScreen = document.getElementById("createScreen");
-const masterScreen = document.getElementById("masterScreen");
-const eventList = document.getElementById("eventList");
+  const eventList = document.getElementById("eventList");
+  let events = [];
 
-/* ===== 起動 ===== */
-loadEvents();
-renderList();
-
-/* ===== ボタン ===== */
-document.getElementById("btnCreate").onclick = openCreateScreen;
-document.getElementById("btnMaster").onclick = openMasterScreen;
-document.getElementById("btnSave").onclick = saveEvent;
-document.getElementById("btnBack1").onclick = backToList;
-document.getElementById("btnBack2").onclick = backToList;
-
-/* ===== 画面切替 ===== */
-function openCreateScreen() {
-  listScreen.classList.add("hidden");
-  masterScreen.classList.add("hidden");
-  createScreen.classList.remove("hidden");
-}
-
-function openMasterScreen() {
-  listScreen.classList.add("hidden");
-  createScreen.classList.add("hidden");
-  masterScreen.classList.remove("hidden");
-}
-
-function backToList() {
-  createScreen.classList.add("hidden");
-  masterScreen.classList.add("hidden");
-  listScreen.classList.remove("hidden");
-  renderList();
-}
-
-/* ===== イベント処理 ===== */
-function saveEvent() {
-  const name = document.getElementById("eventName").value.trim();
-  const date = document.getElementById("eventDate").value;
-
-  if (!name || !date) {
-    alert("イベント名と日付を入力してください");
-    return;
+  function show(screen) {
+    Object.values(screens).forEach(s => s.classList.add("hidden"));
+    screens[screen].classList.remove("hidden");
   }
 
-  events.push({ name, date });
-  localStorage.setItem("events", JSON.stringify(events));
-
-  document.getElementById("eventName").value = "";
-  document.getElementById("eventDate").value = "";
-
-  backToList();
-}
-
-function loadEvents() {
-  const data = localStorage.getItem("events");
-  events = data ? JSON.parse(data) : [];
-}
-
-function renderList() {
-  eventList.innerHTML = "";
-  if (events.length === 0) {
-    eventList.innerHTML = "<p>配車はまだありません</p>";
-    return;
+  function load() {
+    const data = localStorage.getItem("events");
+    events = data ? JSON.parse(data) : [];
   }
-  events.forEach(e => {
-    const div = document.createElement("div");
-    div.className = "list-item";
-    div.textContent = `${e.date}　${e.name}`;
-    eventList.appendChild(div);
+
+  function save() {
+    localStorage.setItem("events", JSON.stringify(events));
+  }
+
+  function render() {
+    eventList.innerHTML = "";
+    if (events.length === 0) {
+      eventList.innerHTML = "<p>配車はまだありません</p>";
+      return;
+    }
+    events.forEach(e => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.textContent = `${e.date}　${e.name}`;
+      eventList.appendChild(div);
+    });
+  }
+
+  document.getElementById("goCreate").addEventListener("click", () => show("create"));
+  document.getElementById("goMaster").addEventListener("click", () => show("master"));
+  document.getElementById("backFromCreate").addEventListener("click", () => { render(); show("list"); });
+  document.getElementById("backFromMaster").addEventListener("click", () => show("list"));
+
+  document.getElementById("saveEvent").addEventListener("click", () => {
+    const name = document.getElementById("eventName").value.trim();
+    const date = document.getElementById("eventDate").value;
+    if (!name || !date) {
+      alert("イベント名と日付を入力してください");
+      return;
+    }
+    events.push({ name, date });
+    save();
+    document.getElementById("eventName").value = "";
+    document.getElementById("eventDate").value = "";
+    render();
+    show("list");
   });
-}
+
+  load();
+  render();
+})();
 </script>
 
 </body>
