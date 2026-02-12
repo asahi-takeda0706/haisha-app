@@ -6,18 +6,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body{margin:0;font-family:system-ui;background:#f3f4f6;}
-header{background:#1e40af;color:#fff;padding:14px;font-size:20px;}
+header{background:#1e3a8a;color:#fff;padding:16px;font-size:20px;}
 section{padding:16px;}
 button{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;margin:4px;}
 .blue{background:#2563eb;color:#fff;}
-.gray{background:#6b7280;color:#fff;}
 .green{background:#16a34a;color:#fff;}
-.yellow{background:#eab308;color:#000;}
+.gray{background:#6b7280;color:#fff;}
 .red{background:#dc2626;color:#fff;}
-.card{background:#fff;padding:10px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.card{background:#fff;padding:10px;border-radius:10px;margin-bottom:8px;
+display:flex;justify-content:space-between;align-items:center;}
 .hidden{display:none;}
-.statusBtn{min-width:40px;}
 .active{outline:3px solid #000;}
+h2{margin-top:0;}
+.badge{background:#e5e7eb;padding:4px 8px;border-radius:6px;margin-left:6px;font-size:12px;}
 </style>
 </head>
 <body>
@@ -42,13 +43,21 @@ button{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;margin:4px;
 <section id="event" class="hidden">
   <h2>選手出欠入力</h2>
   <div id="attendanceList"></div>
+
+  <h2>車両提供</h2>
+  <div id="carSelect"></div>
+
   <br>
+  <button class="green" onclick="autoAssign()">自動振分</button>
   <button class="gray" onclick="goHome()">← 戻る</button>
+
+  <h2>振分結果</h2>
+  <div id="result"></div>
 </section>
 
 <script>
 
-/* ===== 初期データ固定 ===== */
+/* ===== 初期データ ===== */
 
 const players = [
 {grade:5,name:"小路口 悠太郎"},
@@ -94,87 +103,143 @@ const cars = [
 ];
 
 let attendance = {};
+let selectedCars = {};
+let assignment = {};
 
 /* ===== 画面制御 ===== */
 
-function hideAll(){
-  home.classList.add("hidden");
-  master.classList.add("hidden");
-  event.classList.add("hidden");
-}
-function showMaster(){
-  hideAll();
-  master.classList.remove("hidden");
-  renderPlayers();
-  renderCars();
-}
-function showEvent(){
-  hideAll();
-  event.classList.remove("hidden");
-  renderAttendance();
-}
 function goHome(){
-  hideAll();
-  home.classList.remove("hidden");
+document.getElementById("home").classList.remove("hidden");
+document.getElementById("master").classList.add("hidden");
+document.getElementById("event").classList.add("hidden");
+}
+
+function showMaster(){
+document.getElementById("home").classList.add("hidden");
+document.getElementById("master").classList.remove("hidden");
+renderMaster();
+}
+
+function showEvent(){
+document.getElementById("home").classList.add("hidden");
+document.getElementById("event").classList.remove("hidden");
+renderAttendance();
+renderCarSelect();
 }
 
 /* ===== マスター表示 ===== */
 
-function renderPlayers(){
-  playerList.innerHTML="";
-  players
-    .slice()
-    .sort((a,b)=>b.grade-a.grade||a.name.localeCompare(b.name))
-    .forEach(p=>{
-      const div=document.createElement("div");
-      div.className="card";
-      div.textContent=`小${p.grade} ${p.name}`;
-      playerList.appendChild(div);
-    });
+function renderMaster(){
+const pList=document.getElementById("playerList");
+pList.innerHTML="";
+players.forEach((p,i)=>{
+pList.innerHTML+=`
+<div class="card">
+<span>小${p.grade} ${p.name}</span>
+<button class="red" onclick="deletePlayer(${i})">削除</button>
+</div>`;
+});
+
+const cList=document.getElementById("carList");
+cList.innerHTML="";
+cars.forEach((c,i)=>{
+cList.innerHTML+=`
+<div class="card">
+<span>${c.name} <span class="badge">${c.capacity}人</span></span>
+<button class="red" onclick="deleteCar(${i})">削除</button>
+</div>`;
+});
 }
 
-function renderCars(){
-  carList.innerHTML="";
-  cars
-    .slice()
-    .sort((a,b)=>a.name.localeCompare(b.name))
-    .forEach(c=>{
-      const div=document.createElement("div");
-      div.className="card";
-      div.textContent=`${c.name}（定員${c.capacity}人）`;
-      carList.appendChild(div);
-    });
+function deletePlayer(i){
+players.splice(i,1);
+renderMaster();
+}
+
+function deleteCar(i){
+cars.splice(i,1);
+renderMaster();
 }
 
 /* ===== 出欠UI ===== */
 
 function renderAttendance(){
-  attendanceList.innerHTML="";
-  players
-    .slice()
-    .sort((a,b)=>b.grade-a.grade||a.name.localeCompare(b.name))
-    .forEach(p=>{
-      if(!attendance[p.name]) attendance[p.name]="none";
-      const div=document.createElement("div");
-      div.className="card";
-      div.innerHTML=`
-        <div>小${p.grade} ${p.name}</div>
-        <div>
-          <button class="statusBtn green ${attendance[p.name]==='yes'?'active':''}" onclick="setStatus('${p.name}','yes')">◯</button>
-          <button class="statusBtn yellow ${attendance[p.name]==='maybe'?'active':''}" onclick="setStatus('${p.name}','maybe')">△</button>
-          <button class="statusBtn red ${attendance[p.name]==='no'?'active':''}" onclick="setStatus('${p.name}','no')">×</button>
-        </div>
-      `;
-      attendanceList.appendChild(div);
-    });
+const list=document.getElementById("attendanceList");
+list.innerHTML="";
+players.forEach(p=>{
+attendance[p.name]="";
+list.innerHTML+=`
+<div class="card">
+<span>小${p.grade} ${p.name}</span>
+<div>
+<button class="blue" onclick="setAttend('${p.name}','〇',this)">〇</button>
+<button class="gray" onclick="setAttend('${p.name}','欠',this)">欠</button>
+</div>
+</div>`;
+});
 }
 
-function setStatus(name,status){
-  attendance[name]=status;
-  renderAttendance();
+function setAttend(name,val,btn){
+attendance[name]=val;
+const parent=btn.parentNode;
+Array.from(parent.children).forEach(b=>b.classList.remove("active"));
+btn.classList.add("active");
+}
+
+/* ===== 車両選択 ===== */
+
+function renderCarSelect(){
+const list=document.getElementById("carSelect");
+list.innerHTML="";
+cars.forEach(c=>{
+selectedCars[c.name]=false;
+list.innerHTML+=`
+<div class="card">
+<span>${c.name} (${c.capacity}人)</span>
+<button class="green" onclick="toggleCar('${c.name}',this)">使用</button>
+</div>`;
+});
+}
+
+function toggleCar(name,btn){
+selectedCars[name]=!selectedCars[name];
+btn.classList.toggle("active");
+}
+
+/* ===== 自動振分 ===== */
+
+function autoAssign(){
+assignment={};
+const attendPlayers=players.filter(p=>attendance[p.name]==="〇");
+const usableCars=cars.filter(c=>selectedCars[c.name]);
+
+usableCars.forEach(c=>assignment[c.name]=[]);
+
+let carIndex=0;
+attendPlayers.forEach(p=>{
+if(usableCars.length===0)return;
+let car=usableCars[carIndex];
+if(assignment[car.name].length < car.capacity){
+assignment[car.name].push(p.name);
+}else{
+carIndex++;
+if(carIndex<usableCars.length){
+assignment[usableCars[carIndex].name].push(p.name);
+}
+}
+});
+
+renderResult();
+}
+
+function renderResult(){
+const r=document.getElementById("result");
+r.innerHTML="";
+for(let car in assignment){
+r.innerHTML+=`<div class="card"><strong>${car}</strong><div>${assignment[car].join("<br>")}</div></div>`;
+}
 }
 
 </script>
-
 </body>
 </html>
