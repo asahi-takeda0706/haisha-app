@@ -3,228 +3,298 @@
 <head>
 <meta charset="UTF-8">
 <title>配車管理アプリ</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{margin:0;font-family:system-ui;background:#f3f4f6;}
-header{background:#1e3a8a;color:#fff;padding:16px;font-size:20px;}
-section{padding:16px;}
-button{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;margin:4px;}
-.blue{background:#2563eb;color:#fff;}
-.green{background:#16a34a;color:#fff;}
-.gray{background:#6b7280;color:#fff;}
-.red{background:#dc2626;color:#fff;}
-.card{background:#fff;padding:10px;border-radius:10px;margin-bottom:8px;
-display:flex;justify-content:space-between;align-items:center;}
-.hidden{display:none;}
-.active{outline:3px solid #000;}
-.badge{background:#e5e7eb;padding:4px 8px;border-radius:6px;margin-left:6px;font-size:12px;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f5;margin:0;padding:10px}
+h2,h3{margin:6px 0}
+.section{background:#fff;border-radius:12px;padding:10px;margin-bottom:10px}
+.flex{display:flex;gap:10px}
+.card{flex:1;background:#fff;border-radius:12px;padding:10px}
+.row{display:flex;align-items:center;gap:6px;padding:8px;border-bottom:1px solid #eee}
+.row:last-child{border-bottom:none}
+.big-btn{padding:10px;font-size:16px;border-radius:8px;border:none;color:#000;cursor:pointer}
+.absent{background:#ffe5e5}
+.btn-attend{background:#4da3ff}
+.btn-absent{background:#ff6b6b}
+.status-btn{padding:6px 10px;border-radius:8px;border:none;font-size:14px;color:#000;cursor:pointer}
+.st-none{background:#ddd}
+.st-ok{background:#4da3ff}
+.st-ng{background:#ff6b6b}
+.use-btn{padding:6px 10px;border-radius:8px;border:none;color:#000;cursor:pointer}
+.use-on{background:#4caf50}
+.use-off{background:#ccc}
+.status-ok{color:green;font-weight:bold}
+.status-ng{color:red;font-weight:bold}
+.hidden{display:none}
+input[type=number]{width:55px;font-size:16px}
 </style>
 </head>
 <body>
 
-<header>配車管理アプリ</header>
+<div id="mainScreen">
+<h2>配車管理</h2>
 
-<section id="home">
-  <button class="blue" onclick="showEvent()">+ 新しい配車を作成</button>
-  <button class="blue" onclick="showMaster()">マスター管理</button>
-</section>
+<div class="section">
+  <div class="row">
+    <input type="date" id="date">
+    <span id="weekday"></span>
+  </div>
+  <div class="row">
+    <input type="text" id="eventName" placeholder="イベント名" style="width:100%">
+  </div>
+</div>
 
-<section id="master" class="hidden">
-  <h2>選手マスター</h2>
-  <div id="playerList"></div>
-  <hr>
-  <h2>車両マスター</h2>
-  <div id="carList"></div>
-  <br>
-  <button class="gray" onclick="goHome()">← 戻る</button>
-</section>
+<div class="flex">
+  <div class="card">
+    <h3>選手出欠</h3>
+    <div id="players"></div>
+    出席人数：<strong><span id="attendCount">0</span>名</strong>
+  </div>
 
-<section id="event" class="hidden">
-  <h2>選手出欠入力</h2>
-  <div id="attendanceList"></div>
+  <div class="card">
+    <h3>車両提供</h3>
+    <div id="cars"></div>
+  </div>
+</div>
 
-  <h2>車両提供</h2>
-  <div id="carSelect"></div>
+<div class="section">
+  <h3>配車状況</h3>
+  <div id="capacityStatus"></div>
+</div>
 
-  <br>
-  <button class="green" onclick="autoAssign()">自動振分</button>
-  <button class="gray" onclick="goHome()">← 戻る</button>
+<div class="section">
+  <button class="big-btn" onclick="openMaster()">マスター管理</button>
+</div>
+</div>
 
-  <h2>振分結果</h2>
-  <div id="result"></div>
-</section>
+<div id="masterScreen" class="hidden">
+<h2>マスター管理</h2>
+
+<div class="section">
+<h3>選手マスター</h3>
+<button onclick="sortPlayers()">学年順ソート</button>
+<div id="masterPlayers"></div>
+<button class="big-btn" onclick="addPlayer()">＋選手追加</button>
+</div>
+
+<div class="section">
+<h3>車両マスター</h3>
+<button onclick="sortCarsName()">名前順</button>
+<button onclick="sortCarsCap()">定員順</button>
+<div id="masterCars"></div>
+<button class="big-btn" onclick="addCar()">＋車両追加</button>
+</div>
+
+<div class="section">
+<button class="big-btn" onclick="closeMaster()">← 戻る</button>
+</div>
+</div>
 
 <script>
 
-window.onload = function(){
+/* ===== 正式基準データ ===== */
 
-/* ===== 初期データ ===== */
-
-const players = [
-{grade:5,name:"小路口 悠太郎"},
-{grade:5,name:"杉山 朔弥"},
-{grade:5,name:"武田 諒太郎"},
-{grade:5,name:"近藤 諒平"},
-{grade:5,name:"畑本 颯太"},
-{grade:4,name:"長谷 紘希"},
-{grade:4,name:"杉野森 絃"},
-{grade:4,name:"菅原 奏奈"},
-{grade:4,name:"菅原 奏乃"},
-{grade:4,name:"野沢 有史"},
-{grade:4,name:"濱谷 龍希"},
-{grade:4,name:"安部 晴也"},
-{grade:4,name:"鈴木 凱斗"},
-{grade:4,name:"貝塚 大知"},
-{grade:4,name:"能戸 達己"},
-{grade:4,name:"河嶋 翔塁"},
-{grade:3,name:"鳴嶋 拓希"},
-{grade:3,name:"永田 涼"},
-{grade:3,name:"飛田 隆太"},
-{grade:3,name:"畑本 弘太"}
+let playersMaster = JSON.parse(localStorage.getItem("playersMaster")) || [
+{name:"小路口 悠太郎",grade:5},
+{name:"杉山 朔弥",grade:5},
+{name:"武田 諒太郎",grade:5},
+{name:"近藤 諒平",grade:5},
+{name:"畑本 颯太",grade:5},
+{name:"長谷 紘希",grade:4},
+{name:"杉野森 絃",grade:4},
+{name:"菅原 奏奈",grade:4},
+{name:"菅原 奏乃",grade:4},
+{name:"野沢 有史",grade:4},
+{name:"濱谷 龍希",grade:4},
+{name:"安部 晴也",grade:4},
+{name:"鈴木 凱斗",grade:4},
+{name:"貝塚 大知",grade:4},
+{name:"能戸 達己",grade:4},
+{name:"河嶋 翔塁",grade:4},
+{name:"鳴嶋 拓希",grade:3},
+{name:"永田 涼",grade:3},
+{name:"飛田 隆太",grade:3},
+{name:"畑本 弘太",grade:3}
 ];
 
-const cars = [
-{name:"武田",capacity:4},
-{name:"小路口",capacity:6},
-{name:"杉山",capacity:3},
-{name:"畑本",capacity:6},
-{name:"近藤",capacity:3},
-{name:"長谷",capacity:3},
-{name:"杉野森",capacity:3},
-{name:"菅原",capacity:3},
-{name:"野沢",capacity:5},
-{name:"安部",capacity:6},
-{name:"鈴木",capacity:6},
-{name:"貝塚",capacity:3},
-{name:"能戸",capacity:5},
-{name:"河嶋",capacity:5},
-{name:"鳴嶋",capacity:1},
-{name:"永田",capacity:5},
-{name:"飛田",capacity:4}
+let carMaster = JSON.parse(localStorage.getItem("carMaster")) || [
+{name:"武田",cap:4},
+{name:"小路口",cap:6},
+{name:"杉山",cap:3},
+{name:"畑本",cap:6},
+{name:"近藤",cap:3},
+{name:"長谷",cap:3},
+{name:"杉野森",cap:3},
+{name:"菅原",cap:3},
+{name:"野沢",cap:5},
+{name:"安部",cap:6},
+{name:"鈴木",cap:6},
+{name:"貝塚",cap:3},
+{name:"能戸",cap:5},
+{name:"河嶋",cap:5},
+{name:"鳴嶋",cap:1},
+{name:"永田",cap:5},
+{name:"飛田",cap:4}
 ];
 
-let attendance = {};
-let selectedCars = {};
-let assignment = {};
+/* ===== ユーティリティ ===== */
 
-window.showMaster = function(){
-document.getElementById("home").classList.add("hidden");
-document.getElementById("master").classList.remove("hidden");
-renderMaster();
-};
+function gradeText(g){ return "小"+g; }
 
-window.showEvent = function(){
-document.getElementById("home").classList.add("hidden");
-document.getElementById("event").classList.remove("hidden");
-renderAttendance();
-renderCarSelect();
-};
+function openMaster(){
+  mainScreen.classList.add("hidden");
+  masterScreen.classList.remove("hidden");
+  renderMaster();
+}
+function closeMaster(){
+  localStorage.setItem("playersMaster",JSON.stringify(playersMaster));
+  localStorage.setItem("carMaster",JSON.stringify(carMaster));
+  location.reload();
+}
 
-window.goHome = function(){
-document.getElementById("home").classList.remove("hidden");
-document.getElementById("master").classList.add("hidden");
-document.getElementById("event").classList.add("hidden");
-};
+function sortPlayers(){
+  playersMaster.sort((a,b)=>b.grade-a.grade);
+  renderMaster();
+}
+function sortCarsName(){
+  carMaster.sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+  renderMaster();
+}
+function sortCarsCap(){
+  carMaster.sort((a,b)=>b.cap-a.cap);
+  renderMaster();
+}
 
 function renderMaster(){
-const pList=document.getElementById("playerList");
-pList.innerHTML="";
-players.forEach((p,i)=>{
-pList.innerHTML+=`
-<div class="card">
-<span>小${p.grade} ${p.name}</span>
-<button class="red" onclick="deletePlayer(${i})">削除</button>
-</div>`;
-});
+  masterPlayers.innerHTML="";
+  playersMaster.forEach((p,i)=>{
+    masterPlayers.innerHTML+=`
+    <div class="row">
+      <input value="${p.name}" onchange="playersMaster[${i}].name=this.value">
+      <input type="number" value="${p.grade}" style="width:60px" onchange="playersMaster[${i}].grade=Number(this.value)">
+      <button onclick="playersMaster.splice(${i},1);renderMaster()">削除</button>
+    </div>`;
+  });
 
-const cList=document.getElementById("carList");
-cList.innerHTML="";
-cars.forEach((c,i)=>{
-cList.innerHTML+=`
-<div class="card">
-<span>${c.name} <span class="badge">${c.capacity}人</span></span>
-<button class="red" onclick="deleteCar(${i})">削除</button>
-</div>`;
-});
+  masterCars.innerHTML="";
+  carMaster.forEach((c,i)=>{
+    masterCars.innerHTML+=`
+    <div class="row">
+      <input value="${c.name}" onchange="carMaster[${i}].name=this.value">
+      定員 <input type="number" value="${c.cap}" onchange="carMaster[${i}].cap=Number(this.value)">
+      <button onclick="carMaster.splice(${i},1);renderMaster()">削除</button>
+    </div>`;
+  });
 }
 
-window.deletePlayer=function(i){players.splice(i,1);renderMaster();}
-window.deleteCar=function(i){cars.splice(i,1);renderMaster();}
-
-function renderAttendance(){
-const list=document.getElementById("attendanceList");
-list.innerHTML="";
-players.forEach(p=>{
-attendance[p.name]="";
-list.innerHTML+=`
-<div class="card">
-<span>小${p.grade} ${p.name}</span>
-<div>
-<button class="blue" onclick="setAttend('${p.name}','〇',this)">〇</button>
-<button class="gray" onclick="setAttend('${p.name}','欠',this)">欠</button>
-</div>
-</div>`;
-});
+function addPlayer(){
+  playersMaster.push({name:"新規選手",grade:0});
+  renderMaster();
+}
+function addCar(){
+  carMaster.push({name:"新規家庭",cap:4});
+  renderMaster();
 }
 
-window.setAttend=function(name,val,btn){
-attendance[name]=val;
-const parent=btn.parentNode;
-Array.from(parent.children).forEach(b=>b.classList.remove("active"));
-btn.classList.add("active");
-};
+/* ===== メイン画面 ===== */
 
-function renderCarSelect(){
-const list=document.getElementById("carSelect");
-list.innerHTML="";
-cars.forEach(c=>{
-selectedCars[c.name]=false;
-list.innerHTML+=`
-<div class="card">
-<span>${c.name} (${c.capacity}人)</span>
-<button class="green" onclick="toggleCar('${c.name}',this)">使用</button>
-</div>`;
-});
+function init(){
+  playersMaster
+    .sort((a,b)=>b.grade-a.grade)
+    .forEach(p=>{
+      players.innerHTML+=`
+      <div class="row">
+        <div style="flex:1">${p.name}（${gradeText(p.grade)}）</div>
+        <button class="big-btn btn-attend" onclick="toggleAttend(this)">出席</button>
+      </div>`;
+    });
+
+  carMaster.forEach(c=>{
+    cars.innerHTML+=`
+    <div class="row">
+      <div style="width:60px">${c.name}</div>
+      <button class="status-btn st-none" onclick="toggleStatus(this)">未回答</button>
+      定員 <input type="number" min="1" max="8" placeholder="${c.cap}">
+      <button class="use-btn use-off" onclick="toggleUse(this)">未使用</button>
+    </div>`;
+  });
+
+  updateStatus();
 }
 
-window.toggleCar=function(name,btn){
-selectedCars[name]=!selectedCars[name];
-btn.classList.toggle("active");
-};
-
-window.autoAssign=function(){
-assignment={};
-const attendPlayers=players.filter(p=>attendance[p.name]==="〇");
-const usableCars=cars.filter(c=>selectedCars[c.name]);
-usableCars.forEach(c=>assignment[c.name]=[]);
-let carIndex=0;
-
-attendPlayers.forEach(p=>{
-if(usableCars.length===0)return;
-let car=usableCars[carIndex];
-if(assignment[car.name].length < car.capacity){
-assignment[car.name].push(p.name);
-}else{
-carIndex++;
-if(carIndex<usableCars.length){
-assignment[usableCars[carIndex].name].push(p.name);
-}
-}
-});
-
-renderResult();
-};
-
-function renderResult(){
-const r=document.getElementById("result");
-r.innerHTML="";
-for(let car in assignment){
-r.innerHTML+=`<div class="card"><strong>${car}</strong><div>${assignment[car].join("<br>")}</div></div>`;
-}
+function toggleAttend(btn){
+  const row=btn.parentElement;
+  if(btn.textContent==="出席"){
+    btn.textContent="欠席";
+    btn.className="big-btn btn-absent";
+    row.classList.add("absent");
+  }else{
+    btn.textContent="出席";
+    btn.className="big-btn btn-attend";
+    row.classList.remove("absent");
+  }
+  updateStatus();
 }
 
-}; // ← window.onload 終了
+function toggleStatus(btn){
+  const row=btn.parentElement;
+  const useBtn=row.querySelector(".use-btn");
 
+  if(btn.textContent==="未回答"){
+    btn.textContent="配車可"; btn.className="status-btn st-ok";
+    useBtn.disabled=false;
+  }else if(btn.textContent==="配車可"){
+    btn.textContent="配車不可"; btn.className="status-btn st-ng";
+    useBtn.className="use-btn use-off";
+    useBtn.textContent="未使用";
+    useBtn.disabled=true;
+  }else{
+    btn.textContent="未回答"; btn.className="status-btn st-none";
+    useBtn.disabled=false;
+  }
+  updateStatus();
+}
+
+function toggleUse(btn){
+  if(btn.disabled) return;
+  if(btn.classList.contains("use-off")){
+    btn.className="use-btn use-on"; btn.textContent="使用";
+  }else{
+    btn.className="use-btn use-off"; btn.textContent="未使用";
+  }
+  updateStatus();
+}
+
+function updateStatus(){
+  const attend=document.querySelectorAll("#players .row:not(.absent)").length;
+  attendCount.textContent=attend;
+
+  let cap=0,carsUsed=0;
+  document.querySelectorAll("#cars .row").forEach(r=>{
+    if(r.querySelector(".use-btn").classList.contains("use-on")){
+      carsUsed++;
+      cap+=Number(r.querySelector("input").value||r.querySelector("input").placeholder);
+    }
+  });
+
+  if(cap<attend){
+    capacityStatus.innerHTML=`
+      出席 ${attend}名<br>
+      実使用定員 ${cap}名<br>
+      ${carsUsed}台配車<br>
+      <span class="status-ng">⚠ ${attend-cap}名分 不足</span>
+    `;
+  }else{
+    capacityStatus.innerHTML=`
+      出席 ${attend}名<br>
+      実使用定員 ${cap}名<br>
+      ${carsUsed}台配車<br>
+      <span class="status-ok">✓ 配車OK</span>
+    `;
+  }
+}
+
+init();
 </script>
 </body>
 </html>
