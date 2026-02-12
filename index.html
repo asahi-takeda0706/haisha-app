@@ -17,7 +17,6 @@ button{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;margin:4px;
 display:flex;justify-content:space-between;align-items:center;}
 .hidden{display:none;}
 .active{outline:3px solid #000;}
-h2{margin-top:0;}
 .badge{background:#e5e7eb;padding:4px 8px;border-radius:6px;margin-left:6px;font-size:12px;}
 </style>
 </head>
@@ -56,6 +55,8 @@ h2{margin-top:0;}
 </section>
 
 <script>
+
+window.onload = function(){
 
 /* ===== 初期データ ===== */
 
@@ -106,28 +107,24 @@ let attendance = {};
 let selectedCars = {};
 let assignment = {};
 
-/* ===== 画面制御 ===== */
-
-function goHome(){
-document.getElementById("home").classList.remove("hidden");
-document.getElementById("master").classList.add("hidden");
-document.getElementById("event").classList.add("hidden");
-}
-
-function showMaster(){
+window.showMaster = function(){
 document.getElementById("home").classList.add("hidden");
 document.getElementById("master").classList.remove("hidden");
 renderMaster();
-}
+};
 
-function showEvent(){
+window.showEvent = function(){
 document.getElementById("home").classList.add("hidden");
 document.getElementById("event").classList.remove("hidden");
 renderAttendance();
 renderCarSelect();
-}
+};
 
-/* ===== マスター表示 ===== */
+window.goHome = function(){
+document.getElementById("home").classList.remove("hidden");
+document.getElementById("master").classList.add("hidden");
+document.getElementById("event").classList.add("hidden");
+};
 
 function renderMaster(){
 const pList=document.getElementById("playerList");
@@ -151,17 +148,8 @@ cList.innerHTML+=`
 });
 }
 
-function deletePlayer(i){
-players.splice(i,1);
-renderMaster();
-}
-
-function deleteCar(i){
-cars.splice(i,1);
-renderMaster();
-}
-
-/* ===== 出欠UI ===== */
+window.deletePlayer=function(i){players.splice(i,1);renderMaster();}
+window.deleteCar=function(i){cars.splice(i,1);renderMaster();}
 
 function renderAttendance(){
 const list=document.getElementById("attendanceList");
@@ -179,14 +167,12 @@ list.innerHTML+=`
 });
 }
 
-function setAttend(name,val,btn){
+window.setAttend=function(name,val,btn){
 attendance[name]=val;
 const parent=btn.parentNode;
 Array.from(parent.children).forEach(b=>b.classList.remove("active"));
 btn.classList.add("active");
-}
-
-/* ===== 車両選択 ===== */
+};
 
 function renderCarSelect(){
 const list=document.getElementById("carSelect");
@@ -201,21 +187,18 @@ list.innerHTML+=`
 });
 }
 
-function toggleCar(name,btn){
+window.toggleCar=function(name,btn){
 selectedCars[name]=!selectedCars[name];
 btn.classList.toggle("active");
-}
+};
 
-/* ===== 自動振分 ===== */
-
-function autoAssign(){
+window.autoAssign=function(){
 assignment={};
 const attendPlayers=players.filter(p=>attendance[p.name]==="〇");
 const usableCars=cars.filter(c=>selectedCars[c.name]);
-
 usableCars.forEach(c=>assignment[c.name]=[]);
-
 let carIndex=0;
+
 attendPlayers.forEach(p=>{
 if(usableCars.length===0)return;
 let car=usableCars[carIndex];
@@ -230,7 +213,7 @@ assignment[usableCars[carIndex].name].push(p.name);
 });
 
 renderResult();
-}
+};
 
 function renderResult(){
 const r=document.getElementById("result");
@@ -239,6 +222,8 @@ for(let car in assignment){
 r.innerHTML+=`<div class="card"><strong>${car}</strong><div>${assignment[car].join("<br>")}</div></div>`;
 }
 }
+
+}; // ← window.onload 終了
 
 </script>
 </body>
