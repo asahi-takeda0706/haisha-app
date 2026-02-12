@@ -2,168 +2,234 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>配車管理アプリ（完成・最終安定版）</title>
+<title>配車管理アプリ</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-
 <style>
-body { margin:0; font-family:system-ui,sans-serif; background:#f4f6f8; }
-header { background:#4a90e2; color:#fff; padding:14px; font-size:20px; }
-section { padding:14px; }
-.button {
-  background:#4a90e2; color:#fff;
-  padding:12px; border-radius:8px;
-  margin:10px 0; text-align:center; cursor:pointer;
+body{margin:0;font-family:system-ui;background:#f3f4f6;}
+header{background:#1e40af;color:#fff;padding:14px;font-size:20px;}
+section{padding:16px;}
+button{
+  padding:8px 14px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  margin:4px 4px 4px 0;
 }
-.card {
-  background:#fff; padding:12px;
-  border-radius:8px; margin-bottom:8px;
+.blue{background:#2563eb;color:#fff;}
+.gray{background:#6b7280;color:#fff;}
+.green{background:#16a34a;color:#fff;}
+.red{background:#dc2626;color:#fff;}
+.yellow{background:#eab308;color:#000;}
+.card{
+  background:#fff;
+  padding:10px;
+  border-radius:10px;
+  margin-bottom:8px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
-.hidden { display:none; }
-input {
-  width:100%; padding:10px;
-  margin-bottom:10px; font-size:16px;
+.flex{display:flex;gap:6px;flex-wrap:wrap;}
+.hidden{display:none;}
+input,select{
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ccc;
 }
-.small { font-size:13px; color:#666; }
+.statusBtn{
+  min-width:40px;
+}
+.active{outline:3px solid #000;}
+hr{margin:24px 0;}
 </style>
 </head>
-
 <body>
 
 <header>配車管理アプリ</header>
 
-<!-- 一覧画面 -->
-<section id="screen-list">
-  <h2>配車一覧</h2>
-  <div id="eventList"></div>
-  <div class="button" id="goCreate">＋ 新しい配車を作成</div>
+<!-- ホーム -->
+<section id="home">
+  <button class="blue" onclick="showEvent()">+ 新しい配車を作成</button>
+  <button class="blue" onclick="showMaster()">マスター管理</button>
 </section>
 
-<!-- 作成画面 -->
-<section id="screen-create" class="hidden">
-  <h2>新しい配車</h2>
-  <input id="eventName" placeholder="イベント名">
-  <input id="eventDate" type="date">
-  <div class="button" id="saveEvent">保存</div>
-  <div class="button" id="back">← 戻る</div>
+<!-- マスター -->
+<section id="master" class="hidden">
+  <h2>選手マスター</h2>
+  <div class="flex">
+    <input id="playerName" placeholder="名前">
+    <select id="playerGrade">
+      <option value="1">1年</option>
+      <option value="2">2年</option>
+      <option value="3">3年</option>
+    </select>
+    <button class="blue" onclick="addPlayer()">追加</button>
+    <button onclick="sortPlayers('grade')">学年順</button>
+    <button onclick="sortPlayers('name')">名前順</button>
+  </div>
+  <div id="playerList"></div>
+
+  <hr>
+
+  <h2>車両マスター</h2>
+  <div class="flex">
+    <input id="carName" placeholder="車両名">
+    <input id="carCapacity" type="number" placeholder="定員">
+    <button class="blue" onclick="addCar()">追加</button>
+    <button onclick="sortCars('capacity')">定員順</button>
+    <button onclick="sortCars('name')">名前順</button>
+  </div>
+  <div id="carList"></div>
+
+  <br>
+  <button class="gray" onclick="goHome()">← 戻る</button>
+</section>
+
+<!-- イベント作成 -->
+<section id="event" class="hidden">
+  <h2>選手出欠入力</h2>
+  <div id="attendanceList"></div>
+  <br>
+  <button class="gray" onclick="goHome()">← 戻る</button>
 </section>
 
 <script>
-(() => {
+let players=[];
+let cars=[];
+let attendance={};
 
-  /* ===== DOM ===== */
-  const screenList   = document.getElementById("screen-list");
-  const screenCreate = document.getElementById("screen-create");
-  const eventList    = document.getElementById("eventList");
+function load(){
+  players=JSON.parse(localStorage.getItem("players"))||[];
+  cars=JSON.parse(localStorage.getItem("cars"))||[];
+}
+function save(){
+  localStorage.setItem("players",JSON.stringify(players));
+  localStorage.setItem("cars",JSON.stringify(cars));
+}
 
-  const goCreate = document.getElementById("goCreate");
-  const backBtn  = document.getElementById("back");
-  const saveBtn  = document.getElementById("saveEvent");
+/* 画面切替 */
+function showMaster(){
+  hideAll();
+  document.getElementById("master").classList.remove("hidden");
+  renderPlayers();
+  renderCars();
+}
+function showEvent(){
+  hideAll();
+  document.getElementById("event").classList.remove("hidden");
+  renderAttendance();
+}
+function goHome(){
+  hideAll();
+  document.getElementById("home").classList.remove("hidden");
+}
+function hideAll(){
+  document.getElementById("home").classList.add("hidden");
+  document.getElementById("master").classList.add("hidden");
+  document.getElementById("event").classList.add("hidden");
+}
 
-  const eventName = document.getElementById("eventName");
-  const eventDate = document.getElementById("eventDate");
-
-  /* ===== 状態 ===== */
-  let events = [];
-
-  /* ===== 画面切替 ===== */
-  function showList(){
-    screenCreate.classList.add("hidden");
-    screenList.classList.remove("hidden");
+/* ===== マスター処理 ===== */
+function addPlayer(){
+  const name=playerName.value.trim();
+  const grade=playerGrade.value;
+  if(!name)return;
+  players.push({name,grade:Number(grade)});
+  playerName.value="";
+  save();
+  renderPlayers();
+}
+function deletePlayer(i){
+  players.splice(i,1);
+  save();
+  renderPlayers();
+}
+function sortPlayers(type){
+  if(type==="grade"){
+    players.sort((a,b)=>a.grade-b.grade||a.name.localeCompare(b.name));
+  }else{
+    players.sort((a,b)=>a.name.localeCompare(b.name));
   }
-  function showCreate(){
-    screenList.classList.add("hidden");
-    screenCreate.classList.remove("hidden");
+  save();
+  renderPlayers();
+}
+function renderPlayers(){
+  playerList.innerHTML="";
+  players.forEach((p,i)=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`
+      <div>${p.grade}年 ${p.name}</div>
+      <button onclick="deletePlayer(${i})">削除</button>
+    `;
+    playerList.appendChild(div);
+  });
+}
+
+function addCar(){
+  const name=carName.value.trim();
+  const capacity=carCapacity.value;
+  if(!name||!capacity)return;
+  cars.push({name,capacity:Number(capacity)});
+  carName.value="";
+  carCapacity.value="";
+  save();
+  renderCars();
+}
+function deleteCar(i){
+  cars.splice(i,1);
+  save();
+  renderCars();
+}
+function sortCars(type){
+  if(type==="capacity"){
+    cars.sort((a,b)=>a.capacity-b.capacity);
+  }else{
+    cars.sort((a,b)=>a.name.localeCompare(b.name));
   }
+  save();
+  renderCars();
+}
+function renderCars(){
+  carList.innerHTML="";
+  cars.forEach((c,i)=>{
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`
+      <div>${c.name}（定員${c.capacity}）</div>
+      <button onclick="deleteCar(${i})">削除</button>
+    `;
+    carList.appendChild(div);
+  });
+}
 
-  /* ===== localStorage 正規化ロード ===== */
-  function loadEvents(){
-    let raw;
-    try {
-      raw = JSON.parse(localStorage.getItem("events"));
-    } catch {
-      raw = [];
-    }
+/* ===== 出欠UI（最高UI復活） ===== */
+function renderAttendance(){
+  attendanceList.innerHTML="";
+  players.forEach((p,i)=>{
+    if(!attendance[p.name]) attendance[p.name]="none";
 
-    if (!Array.isArray(raw)) raw = [];
+    const div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`
+      <div>${p.grade}年 ${p.name}</div>
+      <div>
+        <button class="statusBtn green ${attendance[p.name]==='yes'?'active':''}" onclick="setStatus('${p.name}','yes')">◯</button>
+        <button class="statusBtn yellow ${attendance[p.name]==='maybe'?'active':''}" onclick="setStatus('${p.name}','maybe')">△</button>
+        <button class="statusBtn red ${attendance[p.name]==='no'?'active':''}" onclick="setStatus('${p.name}','no')">×</button>
+      </div>
+    `;
+    attendanceList.appendChild(div);
+  });
+}
 
-    // undefined / 壊れた要素を完全排除
-    events = raw.filter(e =>
-      e &&
-      typeof e === "object" &&
-      typeof e.name === "string" &&
-      typeof e.date === "string" &&
-      e.name.trim() !== ""
-    );
+function setStatus(name,status){
+  attendance[name]=status;
+  renderAttendance();
+}
 
-    // 初回 or 全滅時は必ず1件入れる
-    if (events.length === 0) {
-      events.push({
-        name: "サンプル配車",
-        date: new Date().toISOString().slice(0,10)
-      });
-    }
-
-    saveEvents();
-  }
-
-  function saveEvents(){
-    localStorage.setItem("events", JSON.stringify(events));
-  }
-
-  /* ===== 描画 ===== */
-  function renderList(){
-    eventList.innerHTML = "";
-
-    events.forEach(e => {
-      const name = e.name ?? "";
-      const date = e.date ?? "";
-
-      if (!name || !date) return; // 二重ガード
-
-      const div = document.createElement("div");
-      div.className = "card";
-      div.innerHTML = `
-        <strong>${name}</strong>
-        <div class="small">${date}</div>
-      `;
-      eventList.appendChild(div);
-    });
-  }
-
-  /* ===== イベント ===== */
-  goCreate.onclick = showCreate;
-
-  backBtn.onclick = () => {
-    renderList();
-    showList();
-  };
-
-  saveBtn.onclick = () => {
-    const name = eventName.value.trim();
-    const date = eventDate.value;
-
-    if (!name || !date) {
-      alert("イベント名と日付を入力してください");
-      return;
-    }
-
-    events.push({ name, date });
-    saveEvents();
-
-    eventName.value = "";
-    eventDate.value = "";
-
-    renderList();
-    showList();
-  };
-
-  /* ===== 起動 ===== */
-  loadEvents();
-  renderList();
-  showList();
-
-})();
+load();
 </script>
 
 </body>
