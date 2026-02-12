@@ -4,89 +4,41 @@
 <meta charset="UTF-8">
 <title>配車管理アプリ</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="icon" href="data:,">
 <style>
 body{margin:0;font-family:system-ui;background:#f3f4f6;}
 header{background:#1e40af;color:#fff;padding:14px;font-size:20px;}
 section{padding:16px;}
-button{
-  padding:8px 14px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  margin:4px 4px 4px 0;
-}
+button{padding:8px 14px;border:none;border-radius:8px;cursor:pointer;margin:4px;}
 .blue{background:#2563eb;color:#fff;}
 .gray{background:#6b7280;color:#fff;}
 .green{background:#16a34a;color:#fff;}
-.red{background:#dc2626;color:#fff;}
 .yellow{background:#eab308;color:#000;}
-.card{
-  background:#fff;
-  padding:10px;
-  border-radius:10px;
-  margin-bottom:8px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.flex{display:flex;gap:6px;flex-wrap:wrap;}
+.red{background:#dc2626;color:#fff;}
+.card{background:#fff;padding:10px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
 .hidden{display:none;}
-input,select{
-  padding:8px;
-  border-radius:6px;
-  border:1px solid #ccc;
-}
-.statusBtn{
-  min-width:40px;
-}
+.statusBtn{min-width:40px;}
 .active{outline:3px solid #000;}
-hr{margin:24px 0;}
 </style>
 </head>
 <body>
 
 <header>配車管理アプリ</header>
 
-<!-- ホーム -->
 <section id="home">
   <button class="blue" onclick="showEvent()">+ 新しい配車を作成</button>
   <button class="blue" onclick="showMaster()">マスター管理</button>
 </section>
 
-<!-- マスター -->
 <section id="master" class="hidden">
   <h2>選手マスター</h2>
-  <div class="flex">
-    <input id="playerName" placeholder="名前">
-    <select id="playerGrade">
-      <option value="1">1年</option>
-      <option value="2">2年</option>
-      <option value="3">3年</option>
-    </select>
-    <button class="blue" onclick="addPlayer()">追加</button>
-    <button onclick="sortPlayers('grade')">学年順</button>
-    <button onclick="sortPlayers('name')">名前順</button>
-  </div>
   <div id="playerList"></div>
-
   <hr>
-
   <h2>車両マスター</h2>
-  <div class="flex">
-    <input id="carName" placeholder="車両名">
-    <input id="carCapacity" type="number" placeholder="定員">
-    <button class="blue" onclick="addCar()">追加</button>
-    <button onclick="sortCars('capacity')">定員順</button>
-    <button onclick="sortCars('name')">名前順</button>
-  </div>
   <div id="carList"></div>
-
   <br>
   <button class="gray" onclick="goHome()">← 戻る</button>
 </section>
 
-<!-- イベント作成 -->
 <section id="event" class="hidden">
   <h2>選手出欠入力</h2>
   <div id="attendanceList"></div>
@@ -95,133 +47,126 @@ hr{margin:24px 0;}
 </section>
 
 <script>
-let players=[];
-let cars=[];
-let attendance={};
 
-function load(){
-  players=JSON.parse(localStorage.getItem("players"))||[];
-  cars=JSON.parse(localStorage.getItem("cars"))||[];
-}
-function save(){
-  localStorage.setItem("players",JSON.stringify(players));
-  localStorage.setItem("cars",JSON.stringify(cars));
-}
+/* ===== 初期データ固定 ===== */
 
-/* 画面切替 */
+const players = [
+{grade:5,name:"小路口 悠太郎"},
+{grade:5,name:"杉山 朔弥"},
+{grade:5,name:"武田 諒太郎"},
+{grade:5,name:"近藤 諒平"},
+{grade:5,name:"畑本 颯太"},
+{grade:4,name:"長谷 紘希"},
+{grade:4,name:"杉野森 絃"},
+{grade:4,name:"菅原 奏奈"},
+{grade:4,name:"菅原 奏乃"},
+{grade:4,name:"野沢 有史"},
+{grade:4,name:"濱谷 龍希"},
+{grade:4,name:"安部 晴也"},
+{grade:4,name:"鈴木 凱斗"},
+{grade:4,name:"貝塚 大知"},
+{grade:4,name:"能戸 達己"},
+{grade:4,name:"河嶋 翔塁"},
+{grade:3,name:"鳴嶋 拓希"},
+{grade:3,name:"永田 涼"},
+{grade:3,name:"飛田 隆太"},
+{grade:3,name:"畑本 弘太"}
+];
+
+const cars = [
+{name:"武田",capacity:4},
+{name:"小路口",capacity:6},
+{name:"杉山",capacity:3},
+{name:"畑本",capacity:6},
+{name:"近藤",capacity:3},
+{name:"長谷",capacity:3},
+{name:"杉野森",capacity:3},
+{name:"菅原",capacity:3},
+{name:"野沢",capacity:5},
+{name:"安部",capacity:6},
+{name:"鈴木",capacity:6},
+{name:"貝塚",capacity:3},
+{name:"能戸",capacity:5},
+{name:"河嶋",capacity:5},
+{name:"鳴嶋",capacity:1},
+{name:"永田",capacity:5},
+{name:"飛田",capacity:4}
+];
+
+let attendance = {};
+
+/* ===== 画面制御 ===== */
+
+function hideAll(){
+  home.classList.add("hidden");
+  master.classList.add("hidden");
+  event.classList.add("hidden");
+}
 function showMaster(){
   hideAll();
-  document.getElementById("master").classList.remove("hidden");
+  master.classList.remove("hidden");
   renderPlayers();
   renderCars();
 }
 function showEvent(){
   hideAll();
-  document.getElementById("event").classList.remove("hidden");
+  event.classList.remove("hidden");
   renderAttendance();
 }
 function goHome(){
   hideAll();
-  document.getElementById("home").classList.remove("hidden");
-}
-function hideAll(){
-  document.getElementById("home").classList.add("hidden");
-  document.getElementById("master").classList.add("hidden");
-  document.getElementById("event").classList.add("hidden");
+  home.classList.remove("hidden");
 }
 
-/* ===== マスター処理 ===== */
-function addPlayer(){
-  const name=playerName.value.trim();
-  const grade=playerGrade.value;
-  if(!name)return;
-  players.push({name,grade:Number(grade)});
-  playerName.value="";
-  save();
-  renderPlayers();
-}
-function deletePlayer(i){
-  players.splice(i,1);
-  save();
-  renderPlayers();
-}
-function sortPlayers(type){
-  if(type==="grade"){
-    players.sort((a,b)=>a.grade-b.grade||a.name.localeCompare(b.name));
-  }else{
-    players.sort((a,b)=>a.name.localeCompare(b.name));
-  }
-  save();
-  renderPlayers();
-}
+/* ===== マスター表示 ===== */
+
 function renderPlayers(){
   playerList.innerHTML="";
-  players.forEach((p,i)=>{
-    const div=document.createElement("div");
-    div.className="card";
-    div.innerHTML=`
-      <div>${p.grade}年 ${p.name}</div>
-      <button onclick="deletePlayer(${i})">削除</button>
-    `;
-    playerList.appendChild(div);
-  });
+  players
+    .slice()
+    .sort((a,b)=>b.grade-a.grade||a.name.localeCompare(b.name))
+    .forEach(p=>{
+      const div=document.createElement("div");
+      div.className="card";
+      div.textContent=`小${p.grade} ${p.name}`;
+      playerList.appendChild(div);
+    });
 }
 
-function addCar(){
-  const name=carName.value.trim();
-  const capacity=carCapacity.value;
-  if(!name||!capacity)return;
-  cars.push({name,capacity:Number(capacity)});
-  carName.value="";
-  carCapacity.value="";
-  save();
-  renderCars();
-}
-function deleteCar(i){
-  cars.splice(i,1);
-  save();
-  renderCars();
-}
-function sortCars(type){
-  if(type==="capacity"){
-    cars.sort((a,b)=>a.capacity-b.capacity);
-  }else{
-    cars.sort((a,b)=>a.name.localeCompare(b.name));
-  }
-  save();
-  renderCars();
-}
 function renderCars(){
   carList.innerHTML="";
-  cars.forEach((c,i)=>{
-    const div=document.createElement("div");
-    div.className="card";
-    div.innerHTML=`
-      <div>${c.name}（定員${c.capacity}）</div>
-      <button onclick="deleteCar(${i})">削除</button>
-    `;
-    carList.appendChild(div);
-  });
+  cars
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name))
+    .forEach(c=>{
+      const div=document.createElement("div");
+      div.className="card";
+      div.textContent=`${c.name}（定員${c.capacity}人）`;
+      carList.appendChild(div);
+    });
 }
 
-/* ===== 出欠UI（最高UI復活） ===== */
+/* ===== 出欠UI ===== */
+
 function renderAttendance(){
   attendanceList.innerHTML="";
-  players.forEach((p,i)=>{
-    if(!attendance[p.name]) attendance[p.name]="none";
-
-    const div=document.createElement("div");
-    div.className="card";
-    div.innerHTML=`
-      <div>${p.grade}年 ${p.name}</div>
-      <div>
-        <button class="statusBtn green ${attendance[p.name]==='yes'?'active':''}" onclick="setStatus('${p.name}','yes')">◯</button>
-        <button class="statusBtn yellow ${attendance[p.name]==='maybe'?'active':''}" onclick="setStatus('${p.name}','maybe')">△</button>
-        <button class="statusBtn red ${attendance[p.name]==='no'?'active':''}" onclick="setStatus('${p.name}','no')">×</button>
-      </div>
-    `;
-    attendanceList.appendChild(div);
-  });
+  players
+    .slice()
+    .sort((a,b)=>b.grade-a.grade||a.name.localeCompare(b.name))
+    .forEach(p=>{
+      if(!attendance[p.name]) attendance[p.name]="none";
+      const div=document.createElement("div");
+      div.className="card";
+      div.innerHTML=`
+        <div>小${p.grade} ${p.name}</div>
+        <div>
+          <button class="statusBtn green ${attendance[p.name]==='yes'?'active':''}" onclick="setStatus('${p.name}','yes')">◯</button>
+          <button class="statusBtn yellow ${attendance[p.name]==='maybe'?'active':''}" onclick="setStatus('${p.name}','maybe')">△</button>
+          <button class="statusBtn red ${attendance[p.name]==='no'?'active':''}" onclick="setStatus('${p.name}','no')">×</button>
+        </div>
+      `;
+      attendanceList.appendChild(div);
+    });
 }
 
 function setStatus(name,status){
@@ -229,7 +174,6 @@ function setStatus(name,status){
   renderAttendance();
 }
 
-load();
 </script>
 
 </body>
